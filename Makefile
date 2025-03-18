@@ -9,9 +9,13 @@ INCLUDES = -I./includes/
 
 SRCS_MAIN = srcs/main.c
 
-OBJS_MAIN = $(SRCS_MAIN:.c=.o)
+SRCS_UTILS = srcs/utils/time.c \
+				srcs/utils/checksum.c
 
-OBJS = $(OBJS_MAIN)
+OBJS_MAIN = $(SRCS_MAIN:.c=.o)
+OBJS_UTILS = $(SRCS_UTILS:.c=.o)
+
+OBJS = $(OBJS_MAIN) $(OBJS_UTILS)
 
 %.o: %.c
 	@$(CC) $(CCFLAGS) $(INCLUDES) -c $< -o $@
@@ -30,6 +34,6 @@ fclean: clean
 re: fclean all
 
 run: all
-	./$(NAME)
+	@./$(NAME) $(ip)
 
 .PHONY: all clean fclean re run
