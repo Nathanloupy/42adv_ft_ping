@@ -1,5 +1,8 @@
 #include "commons.h"
 
+/*
+ * Calculates the IP/ICMP checksum for packet validation
+*/
 unsigned short checksum(void *b, int len)
 {
 	unsigned short *buf = b;
@@ -13,5 +16,5 @@ unsigned short checksum(void *b, int len)
 	sum = (sum >> 16) + (sum & 0xFFFF);
 	sum += (sum >> 16);
 	result = ~sum;
-	return result;
+	return (result);
 }
