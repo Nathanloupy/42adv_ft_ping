@@ -41,7 +41,6 @@ int wait_for_response(int socket_fd, fd_set *read_fds)
 	
 	if (ret < 0 && errno == EINTR)
 		return (0);
-	
 	return (ret);
 }
 

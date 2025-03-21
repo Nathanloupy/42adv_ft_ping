@@ -15,6 +15,7 @@ void print_usage(void)
 	fprintf(stderr, "      --ttl=N                specify N as time-to-live\n");
 	fprintf(stderr, "  -v, --verbose              verbose output\n");
 	fprintf(stderr, "  -?, --help                 print help and exit\n");
+	fprintf(stderr, "    , --usage                print usage and exit\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Mandatory or optional arguments to long options are also mandatory or optional\n");
 	fprintf(stderr, "for any corresponding short options.\n");

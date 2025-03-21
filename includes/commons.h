@@ -82,36 +82,36 @@ typedef struct s_ping_context
 	char				packet[PING_MAX_DATALEN];
 	size_t				packet_size;
 	t_stats				stats;
-	unsigned int		flags;    /* Bitmask for all flags */
+	unsigned int		flags;
 }	t_ping_context;
 
 /* GLOBAL VARIABLES */
-extern volatile sig_atomic_t keep_running;
+extern volatile sig_atomic_t	keep_running;
 
 /* SIGNALS */
-void signal_handler(int sig);
+void	signal_handler(int sig);
 
 /* SOCKET */
-int initialize_icmp_socket(t_ping_context *context, char *address_to);
+int		initialize_icmp_socket(t_ping_context *context, char *address_to);
 
 /* ICMP */
-void prepare_icmp_header(struct icmp *icmp_hdr, char *packet, int sequence, size_t packet_size);
+void	prepare_icmp_header(struct icmp *icmp_hdr, char *packet, int sequence, size_t packet_size);
 
 /* PACKET */
-int send_packet(int socket_fd, struct sockaddr_in *dest_addr, char *packet, 
+int		send_packet(int socket_fd, struct sockaddr_in *dest_addr, char *packet, 
                 size_t packet_size, struct timeval *send_time, t_ping_context *context);
-int wait_for_response(int socket_fd, fd_set *read_fds);
-void process_echo_reply(char *recv_buf, struct sockaddr_in *from_addr, 
+int		wait_for_response(int socket_fd, fd_set *read_fds);
+void	process_echo_reply(char *recv_buf, struct sockaddr_in *from_addr, 
                         struct timeval *start, struct timeval *end, t_ping_context *context);
-void process_icmp_error(char *recv_buf, struct sockaddr_in *from_addr);
-int process_received_packet(int socket_fd, struct timeval *start, t_ping_context *context);
+void	process_icmp_error(char *recv_buf, struct sockaddr_in *from_addr);
+int		process_received_packet(int socket_fd, struct timeval *start, t_ping_context *context);
 
 /* TIMER */
-void wait_for_next_interval(struct timeval *last_send_time);
+void	wait_for_next_interval(struct timeval *last_send_time);
 
 /* PARSER */
-int parse_arguments(int argc, char *argv[], t_ping_context *context);
-void print_usage(void);
+int		parse_arguments(int argc, char *argv[], t_ping_context *context);
+void	print_usage(void);
 
 /* STATS */
-void print_statistics(t_ping_context *context);
+void	print_statistics(t_ping_context *context);

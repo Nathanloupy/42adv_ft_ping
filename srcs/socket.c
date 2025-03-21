@@ -44,7 +44,6 @@ int initialize_icmp_socket(t_ping_context *context, char *address_to)
 			close(context->socket_fd);
 			return (1);
 		}
-		
 		memcpy(&context->dest_addr, result->ai_addr, sizeof(struct sockaddr_in));
 		freeaddrinfo(result);
 	}
