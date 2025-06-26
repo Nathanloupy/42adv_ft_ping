@@ -1,5 +1,5 @@
 run: build
-	docker run -d --rm --name ft_ping -v $(shell pwd)/../../42adv_ft_ping/:/app ft_ping
+	docker run -d --name ft_ping -v $(shell pwd)/../:/app ft_ping
 
 build:
 	docker build -t ft_ping .
@@ -11,6 +11,7 @@ stop:
 	docker stop ft_ping
 
 fclean: stop
+	docker rm ft_ping
 	docker image rm ft_ping
-
+ 
 re: run build exec stop fclean

@@ -11,11 +11,16 @@ int main(int argc, char *argv[])
 	struct timeval	last_send_time;
 	int				sequence = 0;
 	fd_set			read_fds;
+	time_t			start_time;
+	time_t			current_time;
 
 	memset(&context, 0, sizeof(context));
 	context.stats.min_time = 9999.0;
 
-	if (parse_arguments(argc, argv, &context))
+	ret = parse_arguments(argc, argv, &context);
+	if (ret == 2)
+		return (0);
+	else if (ret == 1)
 		return (1);
 
 	if (initialize_icmp_socket(&context, context.destination_ip))
@@ -33,9 +38,14 @@ int main(int argc, char *argv[])
 	printf("PING %s (%s): %zu data bytes\n", context.destination_ip, from_ip, context.packet_size);
 
 	gettimestamp(&last_send_time);
+	time(&start_time);
 
 	while (keep_running && (context.count == -1 || sequence < context.count))
 	{
+		time(&current_time);
+		if (difftime(current_time, start_time) >= context.timeout)
+			break;
+
 		prepare_icmp_header(&context.icmp_hdr, context.packet, sequence++, context.packet_size);
 		
 		context.stats.packets_sent++;
@@ -43,17 +53,20 @@ int main(int argc, char *argv[])
 				context.packet, sizeof(context.icmp_hdr) + context.packet_size, &last_send_time, &context) <= 0)
 			break;
 
-		ret = wait_for_response(context.socket_fd, &read_fds);
+		ret = wait_for_response(context.socket_fd, &read_fds, &context);
 		
 		if (!keep_running)
 			break;
-		if (ret < 0)
+		else if (ret < 0)
 		{
 			perror("select");
 			break;
 		}
 		else if (ret == 0)
-			printf("Request timeout for icmp_seq %d\n", context.icmp_hdr.icmp_seq);
+		{
+			if (!(context.flags & FLAG_QUIET))
+				printf("Request timeout for icmp_seq %d\n", context.icmp_hdr.icmp_seq);
+		}
 		else
 		{
 			if (process_received_packet(context.socket_fd, &last_send_time, &context) < 0)

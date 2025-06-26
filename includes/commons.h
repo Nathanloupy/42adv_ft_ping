@@ -28,6 +28,7 @@
 /* DEFINES - FLAGS */
 #define FLAG_VERBOSE (1 << 0)  /* -v flag */
 #define FLAG_HELP    (1 << 1)  /* -? flag */
+#define FLAG_QUIET   (1 << 2)  /* -q flag */
 
 /* DEFINES - ICMP ERRORS */
 #ifndef ICMP_DEST_UNREACH
@@ -83,6 +84,7 @@ typedef struct s_ping_context
 	size_t				packet_size;
 	t_stats				stats;
 	unsigned int		flags;
+	time_t				timeout;
 }	t_ping_context;
 
 /* GLOBAL VARIABLES */
@@ -100,7 +102,7 @@ void	prepare_icmp_header(struct icmp *icmp_hdr, char *packet, int sequence, size
 /* PACKET */
 int		send_packet(int socket_fd, struct sockaddr_in *dest_addr, char *packet, 
                 size_t packet_size, struct timeval *send_time, t_ping_context *context);
-int		wait_for_response(int socket_fd, fd_set *read_fds);
+int		wait_for_response(int socket_fd, fd_set *read_fds, t_ping_context *context);
 void	process_echo_reply(char *recv_buf, struct sockaddr_in *from_addr, 
                         struct timeval *start, struct timeval *end, t_ping_context *context);
 void	process_icmp_error(char *recv_buf, struct sockaddr_in *from_addr);

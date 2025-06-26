@@ -53,3 +53,4 @@ dkms.conf
 
 ft_ping
 docker_original/
+.vscode/

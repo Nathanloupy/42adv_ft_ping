@@ -3,22 +3,32 @@
 /*
  * Print usage information for the program
 */
+void print_help(void)
+{
+	printf("Usage: ft_ping [OPTION...] HOST ...\n");
+	printf("Send ICMP ECHO_REQUEST packets to network hosts.\n");
+	printf("\n");
+	printf(" Options valid for all request types:\n");
+	printf("\n");
+	printf("  -c, --count=NUMBER         stop after sending NUMBER packets\n");
+	printf("  -q, --quiet                quiet output\n");
+	printf("  -s, --size=NUMBER          send NUMBER data octets\n");
+	printf("      --ttl=N                specify N as time-to-live\n");
+	printf("  -v, --verbose              verbose output\n");
+	printf("  -w, --timeout=N            stop after N seconds\n");
+	printf("  -?, --help                 give this help list\n");
+	printf("      --usage                give a short usage message\n");
+	printf("\n");
+	printf("Mandatory or optional arguments to long options are also mandatory or optional\n");
+	printf("for any corresponding short options.\n");
+	printf("\n");
+	printf("Report bugs to <nlederge@student.42mulhouse.fr>.\n");
+}
+
 void print_usage(void)
 {
-	fprintf(stderr, "Usage: ft_ping [OPTION...] HOST ...\n");
-	fprintf(stderr, "Send ICMP ECHO_REQUEST packets to network hosts.\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, " Options valid for all request types:\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "  -c, --count=NUMBER         stop after sending NUMBER packets\n");
-	fprintf(stderr, "  -s, --size=NUMBER          send NUMBER data bytes\n");
-	fprintf(stderr, "      --ttl=N                specify N as time-to-live\n");
-	fprintf(stderr, "  -v, --verbose              verbose output\n");
-	fprintf(stderr, "  -?, --help                 print help and exit\n");
-	fprintf(stderr, "    , --usage                print usage and exit\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Mandatory or optional arguments to long options are also mandatory or optional\n");
-	fprintf(stderr, "for any corresponding short options.\n");
+	printf("Usage: ft_ping [OPTION...] HOST ...\n");
+	printf("Send ICMP ECHO_REQUEST packets to network hosts.\n");
 }
 
 /* Parses command line arguments and sets up program options
@@ -27,6 +37,7 @@ void print_usage(void)
  * Supports -c/--count=NUMBER to specify how many packets to send
  * Supports -s/--size=NUMBER to specify packet size
  * Supports -v/--verbose for verbose output
+ * Supports -q/--quiet for quiet output (suppress normal output)
  * Supports -?/--help for help information
  * IP address can be specified at any position
 */
@@ -36,6 +47,7 @@ int parse_arguments(int argc, char *argv[], t_ping_context *context)
 	context->destination_ip = NULL;
 	context->count = -1;
 	context->packet_size = 56;
+	context->timeout = (time_t)1;
 
 	for (int i = 1; i < argc; i++)
 	{
@@ -93,15 +105,46 @@ int parse_arguments(int argc, char *argv[], t_ping_context *context)
 				return (1);
 			}
 		}
+		else if (strcmp(argv[i], "-w") == 0 || strncmp(argv[i], "--timeout=", 10) == 0)
+		{
+			if (strncmp(argv[i], "--timeout=", 10) == 0)
+			{
+				context->timeout = (time_t)atoi(argv[i] + 10);
+			}
+			else
+			{
+				if (i + 1 >= argc)
+				{
+					fprintf(stderr, "ft_ping: option requires an argument -- 'w'\n");
+					return (1);
+				}
+				context->timeout = (time_t)atoi(argv[i + 1]);
+				i++;
+			}
+			if (context->timeout <= 0)
+			{
+				fprintf(stderr, "Invalid timeout value. Must be greater than 0.\n");
+				return (1);
+			}
+		}
 		else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0)
 		{
 			context->flags |= FLAG_VERBOSE;
 		}
+		else if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0)
+		{
+			context->flags |= FLAG_QUIET;
+		}
 		else if (strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0)
 		{
 			context->flags |= FLAG_HELP;
+			print_help();
+			return (2);
+		}
+		else if (strcmp(argv[i], "--usage") == 0)
+		{
 			print_usage();
-			return (1);
+			return (2);
 		}
 		else
 		{

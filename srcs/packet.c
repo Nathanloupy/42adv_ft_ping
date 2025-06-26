@@ -14,7 +14,7 @@ int send_packet(int socket_fd, struct sockaddr_in *dest_addr, char *packet,
 	ret = sendto(socket_fd, packet, packet_size, 0, 
 			(struct sockaddr*)dest_addr, sizeof(*dest_addr));
 	
-	if (context->flags & FLAG_VERBOSE)
+	if ((context->flags & FLAG_VERBOSE) && !(context->flags & FLAG_QUIET))
 		printf("Sending %zu bytes ICMP packet to %s\n", 
 			packet_size, context->destination_ip);
 	
@@ -27,17 +27,18 @@ int send_packet(int socket_fd, struct sockaddr_in *dest_addr, char *packet,
 /*
  * Waits for a response with timeout using select
 */
-int wait_for_response(int socket_fd, fd_set *read_fds)
+int wait_for_response(int socket_fd, fd_set *read_fds, t_ping_context *context)
 {
 	struct timeval timeout;
 	
+	(void)context;
 	FD_ZERO(read_fds);
 	FD_SET(socket_fd, read_fds);
 	
 	timeout.tv_sec = 1;
 	timeout.tv_usec = 0;
 	
-	int ret = select(socket_fd + 1, read_fds, NULL, NULL, &timeout);
+	int ret = select(socket_fd + 1, read_fds, NULL, NULL, &timeout); //TODO: test with 127.0.0.1, will not catch it, loop for select, display wrong packets, until timeout has passed
 	
 	if (ret < 0 && errno == EINTR)
 		return (0);
@@ -69,9 +70,12 @@ void process_echo_reply(char *recv_buf, struct sockaddr_in *from_addr,
 
 	int icmp_size = context->packet_size + 8;
 	
-	printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n", 
-		icmp_size, from_ip, icmp_reply->icmp_seq, 
-		ip_hdr->ip_ttl, elapsed_time);
+	if (!(context->flags & FLAG_QUIET))
+	{
+		printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n", 
+			icmp_size, from_ip, icmp_reply->icmp_seq, 
+			ip_hdr->ip_ttl, elapsed_time);
+	}
 }
 
 /*
@@ -170,7 +174,7 @@ int process_received_packet(int socket_fd, struct timeval *start, t_ping_context
 
 	if (icmp_reply->icmp_type == ICMP_ECHOREPLY && icmp_reply->icmp_id == (getpid() & 0xFFFF))
 		process_echo_reply(recv_buf, &from_addr, start, &end, context);
-	else
+	else if (!(context->flags & FLAG_QUIET))
 		process_icmp_error(recv_buf, &from_addr);
 		
 	return (0);
