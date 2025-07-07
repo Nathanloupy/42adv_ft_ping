@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <time.h>
 #include <math.h>
+#include "lpyp.h"
 
 /* DEFINES - GENERAL */
 #define MAXIPLEN 60
