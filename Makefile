@@ -36,18 +36,18 @@ OBJS = $(OBJS_MAIN) $(OBJS_CORE) $(OBJS_UTILS)
 all: $(LPYP_LIB) $(NAME)
 
 $(LPYP_LIB):
-	@make -C $(LPYP_DIR)
+	@make -s --no-print-directory -C $(LPYP_DIR)
 
 $(NAME): $(OBJS) $(LPYP_LIB)
 	@$(CC) $(CCFLAGS) $(INCLUDES) $(OBJS) $(LPYP_LIB) $(LIBFT_LIB) -o $(NAME) -lm
 
 clean:
 	@rm -f $(OBJS)
-	@make -C $(LPYP_DIR) clean
+	@make -s --no-print-directory -C $(LPYP_DIR) clean
 
 fclean: clean
 	@rm -f $(NAME)
-	@make -C $(LPYP_DIR) fclean
+	@make -s --no-print-directory -C $(LPYP_DIR) fclean
 
 re: fclean all
 

@@ -17,10 +17,7 @@ int main(int argc, char *argv[])
 	memset(&context, 0, sizeof(context));
 	context.stats.min_time = 9999.0;
 
-	ret = parse_arguments(argc, argv, &context);
-	if (ret == 2)
-		return (0);
-	else if (ret == 1)
+	if (parse_arguments(argc, argv, &context))
 		return (1);
 
 	if (initialize_icmp_socket(&context, context.destination_ip))
