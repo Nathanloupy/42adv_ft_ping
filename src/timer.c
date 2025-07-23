@@ -7,15 +7,15 @@
  * Converts microseconds to nanoseconds for nanosleep
  * Only waits if there's positive time remaining
 */
-void wait_for_next_interval(struct timeval *last_send_time)
+void	wait_for_next_interval(struct timeval *last_send_time)
 {
-	struct timeval current_time;
-	struct timespec req;
+	struct	timeval current_time;
+	struct	timespec req;
 	
-	gettimestamp(&current_time);
+	get_timestamp(&current_time);
 	
-	long wait_sec = last_send_time->tv_sec + 1 - current_time.tv_sec;
-	long wait_usec = last_send_time->tv_usec - current_time.tv_usec;
+	long	wait_sec = last_send_time->tv_sec + 1 - current_time.tv_sec;
+	long	wait_usec = last_send_time->tv_usec - current_time.tv_usec;
 	
 	if (wait_usec < 0)
 	{
@@ -30,4 +30,4 @@ void wait_for_next_interval(struct timeval *last_send_time)
 		
 		nanosleep(&req, NULL);
 	}
-} 
+}

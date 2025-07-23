@@ -3,11 +3,10 @@
 /*
  * Initializes the ICMP socket, sets TTL, and configures the destination address
 */
-int initialize_icmp_socket(t_ping_context *context, char *address_to)
+int	initialize_icmp_socket(t_ping_context *context, char *dest_host)
 {
-	struct protoent *proto;
-	struct addrinfo hints, *result;
-	int ret;
+	struct protoent	*proto;
+	struct addrinfo	hints, *result;
 
 	proto = getprotobyname("icmp");
 	if (!proto)
@@ -31,16 +30,15 @@ int initialize_icmp_socket(t_ping_context *context, char *address_to)
 	
 	memset(&context->dest_addr, 0, sizeof(context->dest_addr));
 	context->dest_addr.sin_family = PF_INET;
-	if (inet_pton(PF_INET, address_to, &context->dest_addr.sin_addr) <= 0)
+	if (inet_pton(PF_INET, dest_host, &context->dest_addr.sin_addr) <= 0)
 	{
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family = AF_INET;
 		hints.ai_socktype = SOCK_RAW;
 		
-		ret = getaddrinfo(address_to, NULL, &hints, &result);
-		if (ret != 0)
+		if (getaddrinfo(dest_host, NULL, &hints, &result) != 0)
 		{
-			fprintf(stderr, "ft_ping: unknown host %s\n", address_to);
+			fprintf(stderr, "ft_ping: unknown host %s\n", dest_host);
 			close(context->socket_fd);
 			return (1);
 		}
@@ -48,4 +46,4 @@ int initialize_icmp_socket(t_ping_context *context, char *address_to)
 		freeaddrinfo(result);
 	}
 	return (0);
-} 
+}

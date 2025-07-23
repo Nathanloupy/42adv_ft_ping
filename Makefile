@@ -18,6 +18,7 @@ SRCS_CORE = src/signals.c \
 			src/icmp.c \
 			src/packet.c \
 			src/timer.c \
+			src/timeout.c \
 			src/parser.c \
 			src/stats.c
 

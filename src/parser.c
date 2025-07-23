@@ -1,7 +1,7 @@
 #include "commons.h"
 
 /* lpyp option definitions */
-static t_lpyp_option g_options[] = {
+static t_lpyp_option	ft_ping_options[] = {
 	{'c', "count", 'c', LPYP_REQUIRED_ARG | LPYP_DENY_DUPLICATE, "stop after sending NUMBER packets", "NUMBER"},
 	{'q', "quiet", 'q', LPYP_NO_ARG, "quiet output", NULL},
 	{'s', "size", 's', LPYP_REQUIRED_ARG | LPYP_DENY_DUPLICATE, "send NUMBER data octets", "NUMBER"},
@@ -16,9 +16,9 @@ static t_lpyp_option g_options[] = {
 /*
  * lpyp parser callback function
  */
-static int ft_ping_parser(unsigned int key, void *data, char *argument)
+static int	ft_ping_parser(unsigned int key, void *data, char *argument)
 {
-	t_ping_context *context = (t_ping_context *)data;
+	t_ping_context	*context = (t_ping_context *)data;
 
 	switch (key)
 	{
@@ -35,10 +35,10 @@ static int ft_ping_parser(unsigned int key, void *data, char *argument)
 			break;
 		case 's':
 			context->packet_size = ft_atoi(argument);
-			if (context->packet_size <= 0 || context->packet_size > PING_MAX_DATALEN - sizeof(struct icmp))
+			if (context->packet_size <= 0 || context->packet_size > PING_MAX_DATALEN - sizeof(struct icmphdr))
 			{
 				fprintf(stderr, "ft_ping: invalid packet size: %s (must be between 1 and %zu)\n", 
-					argument, PING_MAX_DATALEN - sizeof(struct icmp));
+					argument, PING_MAX_DATALEN - sizeof(struct icmphdr));
 				return (1);
 			}
 			break;
@@ -63,14 +63,14 @@ static int ft_ping_parser(unsigned int key, void *data, char *argument)
 			break;
 		case '?':
 			context->flags |= FLAG_HELP;
-			lpyp_help(g_options, "ft_ping", "Send ICMP ECHO_REQUEST packets to network hosts.");
+			lpyp_help(ft_ping_options, "ft_ping", "Send ICMP ECHO_REQUEST packets to network hosts.");
 			exit(0);
 		case 'u':
-			lpyp_usage(g_options, "ft_ping");
+			lpyp_usage(ft_ping_options, "ft_ping");
 			exit(0);
 		case LPYP_KEY_ARG:
-			if (context->destination_ip == NULL)
-				context->destination_ip = argument;
+			if (context->dest_host == NULL)
+				context->dest_host = argument;
 			else
 			{
 				fprintf(stderr, "ft_ping: too many arguments\n");
@@ -78,7 +78,7 @@ static int ft_ping_parser(unsigned int key, void *data, char *argument)
 			}
 			break;
 		case LPYP_KEY_END:
-			if (context->destination_ip == NULL)
+			if (context->dest_host == NULL)
 			{
 				fprintf(stderr, "ft_ping: missing host operand\n");
 				fprintf(stderr, "Try 'ft_ping --help' or 'ft_ping --usage' for more information.\n");
@@ -98,19 +98,19 @@ static int ft_ping_parser(unsigned int key, void *data, char *argument)
  */
 static void init_context_defaults(t_ping_context *context)
 {
-	context->ttl = 64;
-	context->destination_ip = NULL;
+	context->ttl = DEFAULT_TTL;
+	context->dest_host = NULL;
 	context->count = -1;
-	context->packet_size = 56;
-	context->timeout = (time_t)1;
+	context->packet_size = DEFAULT_PACKET_SIZE;
+	context->timeout = (time_t)-1;
 	context->flags = 0;
 }
 
 /*
  * Parse command line arguments using lpyp
  */
-int parse_arguments(int argc, char *argv[], t_ping_context *context)
+int	parse_arguments(int argc, char *argv[], t_ping_context *context)
 {
 	init_context_defaults(context);
-	return (lpyp_parse(context, argc, argv, g_options, ft_ping_parser));
+	return (lpyp_parse(context, argc, argv, ft_ping_options, ft_ping_parser));
 }

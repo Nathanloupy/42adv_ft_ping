@@ -1,139 +1,74 @@
 #include "commons.h"
 
 /*
- * Sends an ICMP packet and records timestamp
-*/
-int send_packet(int socket_fd, struct sockaddr_in *dest_addr, char *packet, 
-                size_t packet_size, struct timeval *send_time, t_ping_context *context)
-{
-	int ret;
-	
-	gettimestamp(send_time);
-	// Stats are now updated in the calling function
-
-	ret = sendto(socket_fd, packet, packet_size, 0, 
-			(struct sockaddr*)dest_addr, sizeof(*dest_addr));
-	
-	if ((context->flags & FLAG_VERBOSE) && !(context->flags & FLAG_QUIET))
-		printf("Sending %zu bytes ICMP packet to %s\n", 
-			packet_size, context->destination_ip);
-	
-	if (ret <= 0)
-		perror("sendto");
-		
-	return (ret);
-}
-
-/*
- * Waits for a response with timeout using select
-*/
-int wait_for_response(int socket_fd, fd_set *read_fds, t_ping_context *context)
-{
-	struct timeval timeout;
-	
-	(void)context;
-	FD_ZERO(read_fds);
-	FD_SET(socket_fd, read_fds);
-	
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 0;
-	
-	int ret = select(socket_fd + 1, read_fds, NULL, NULL, &timeout); //TODO: test with 127.0.0.1, will not catch it, loop for select, display wrong packets, until timeout has passed
-	
-	if (ret < 0 && errno == EINTR)
-		return (0);
-	return (ret);
-}
-
-/*
  * Processes a received ICMP echo reply
 */
-void process_echo_reply(char *recv_buf, struct sockaddr_in *from_addr, 
+static void	process_echo_reply(const char *from_ip, int icmp_size, struct icmphdr *icmp_packet, struct iphdr *ip_hdr,
                         struct timeval *start, struct timeval *end, t_ping_context *context)
 {
-	char from_ip[INET_ADDRSTRLEN];
-	double elapsed_time;
-	struct ip* ip_hdr = (struct ip*)recv_buf;
-	int ip_header_len = ip_hdr->ip_hl * 4;
-	struct icmp* icmp_reply = (struct icmp*)(recv_buf + ip_header_len);
+	double	elapsed_time;
 
-	inet_ntop(AF_INET, &(from_addr->sin_addr), from_ip, INET_ADDRSTRLEN);
-	elapsed_time = getelapsedtime_ms(start, end);
+	elapsed_time = get_elapsedtime_ms(start, end);
 	
-	context->stats.packets_received++;
-	context->stats.total_time += elapsed_time;
-	context->stats.sum_squared_time += elapsed_time * elapsed_time;
-	if (elapsed_time < context->stats.min_time)
-		context->stats.min_time = elapsed_time;
-	if (elapsed_time > context->stats.max_time)
-		context->stats.max_time = elapsed_time;
-
-	int icmp_size = context->packet_size + 8;
+	update_stats(context, elapsed_time);
 	
 	if (!(context->flags & FLAG_QUIET))
 	{
 		printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n", 
-			icmp_size, from_ip, icmp_reply->icmp_seq, 
-			ip_hdr->ip_ttl, elapsed_time);
+			icmp_size, from_ip, icmp_packet->un.echo.sequence, 
+			ip_hdr->ttl, elapsed_time);
 	}
 }
 
 /*
  * Handles different ICMP error message types
 */
-void process_icmp_error(char *recv_buf, struct sockaddr_in *from_addr)
+static void	process_other_icmp(const char *from_ip, int icmp_size, struct icmphdr *icmp_packet)
 {
-	char from_ip[INET_ADDRSTRLEN];
-	struct ip* ip_hdr = (struct ip*)recv_buf;
-	int ip_header_len = ip_hdr->ip_hl * 4;
-	struct icmp* icmp_reply = (struct icmp*)(recv_buf + ip_header_len);
-	
-	inet_ntop(AF_INET, &(from_addr->sin_addr), from_ip, INET_ADDRSTRLEN);
-	
-	switch (icmp_reply->icmp_type)
+	switch (icmp_packet->type)
 	{
+		case ICMP_ECHOREPLY:
+			printf("%d bytes from %s: Echo Reply (PID Mismatch)\n", icmp_size, from_ip);
+			break;
 		case ICMP_DEST_UNREACH:
-			printf("From %s: Destination Unreachable", from_ip);
-			switch (icmp_reply->icmp_code)
-			{
-				case ICMP_NET_UNREACH:
-					printf(" (Network Unreachable)\n");
-					break;
-				case ICMP_HOST_UNREACH:
-					printf(" (Host Unreachable)\n");
-					break;
-				case ICMP_PROT_UNREACH:
-					printf(" (Protocol Unreachable)\n");
-					break;
-				case ICMP_PORT_UNREACH:
-					printf(" (Port Unreachable)\n");
-					break;
-				default:
-					printf(" (code=%d)\n", icmp_reply->icmp_code);
-					break;
-			}
-			break;
-		case ICMP_TIME_EXCEEDED:
-			printf("From %s: Time to Live exceeded\n", from_ip);
-			break;
-		case ICMP_PARAMETERPROB:
-			printf("From %s: Parameter Problem\n", from_ip);
+			printf("%d bytes from %s: Destination Unreachable\n", icmp_size, from_ip);
 			break;
 		case ICMP_SOURCE_QUENCH:
-			printf("From %s: Source Quench\n", from_ip);
+			printf("%d bytes from %s: Source Quench\n", icmp_size, from_ip);
 			break;
 		case ICMP_REDIRECT:
-			printf("From %s: Redirect\n", from_ip);
+			printf("%d bytes from %s: Redirect\n", icmp_size, from_ip);
 			break;
 		case ICMP_ECHO:
-			printf("From %s: Echo Request\n", from_ip);
+			printf("%d bytes from %s: Echo Request\n", icmp_size, from_ip);
 			break;
-		case ICMP_ECHOREPLY:
-			printf("From %s: Echo Reply (not for us, ID mismatch)\n", from_ip);
+		case ICMP_TIME_EXCEEDED:
+			printf("%d bytes from %s: Time to Live exceeded\n", icmp_size, from_ip);
+			break;
+		case ICMP_PARAMETERPROB:
+			printf("%d bytes from %s: Parameter Problem\n", icmp_size, from_ip);
+			break;
+		case ICMP_TIMESTAMP:
+			printf("%d bytes from %s: Timestamp Request\n", icmp_size, from_ip);
+			break;
+		case ICMP_TIMESTAMPREPLY:
+			printf("%d bytes from %s: Timestamp Reply\n", icmp_size, from_ip);
+			break;
+		case ICMP_INFO_REQUEST:
+			printf("%d bytes from %s: Information Request\n", icmp_size, from_ip);
+			break;
+		case ICMP_INFO_REPLY:
+			printf("%d bytes from %s: Information Reply\n", icmp_size, from_ip);
+			break;
+		case ICMP_ADDRESS:
+			printf("%d bytes from %s: Address Mask Request\n", icmp_size, from_ip);
+			break;
+		case ICMP_ADDRESSREPLY:
+			printf("%d bytes from %s: Address Mask Reply\n", icmp_size, from_ip);
 			break;
 		default:
-			printf("From %s: Unknown ICMP type=%d, code=%d\n", 
-				from_ip, icmp_reply->icmp_type, icmp_reply->icmp_code);
+			printf("%d bytes from %s: Unknown ICMP type=%d, code=%d\n", 
+				icmp_size, from_ip, icmp_packet->type, icmp_packet->code);
 			break;
 	}
 }
@@ -141,41 +76,63 @@ void process_icmp_error(char *recv_buf, struct sockaddr_in *from_addr)
 /*
  * Processes a received packet and handles different ICMP message types
 */
-int process_received_packet(int socket_fd, struct timeval *start, t_ping_context *context)
+int	process_received_packet(int socket_fd, struct timeval *start, t_ping_context *context)
 {
-	char recv_buf[512];
-	struct sockaddr_in from_addr;
-	socklen_t from_len = sizeof(from_addr);
-	struct timeval end;
-	int ret;
+	char				recv_buf[DEFAULT_BUFFER_SIZE];
+	struct sockaddr_in	from_addr;
+	socklen_t			from_len = sizeof(from_addr);
+	struct timeval		end;
+	int 				ret;
 	
 	ret = recvfrom(socket_fd, recv_buf, sizeof(recv_buf), 0, 
 			(struct sockaddr*)&from_addr, &from_len);
-	
-	if (ret <= 0) 
+
+	if (ret < 0)
 	{
 		if (errno == EINTR && !keep_running)
-			return (-1);
+			return (FT_PING_SIGINT);
+		else if (errno == EINTR)
+			return (FT_PING_NO_REPLY);
 		perror("recvfrom");
-		return (0);
+		return (FT_PING_ERROR);
 	}
-	
-	gettimestamp(&end);
-	struct ip* ip_hdr = (struct ip*)recv_buf;
-	int ip_header_len = ip_hdr->ip_hl * 4;
-	struct icmp* icmp_reply = (struct icmp*)(recv_buf + ip_header_len);
+	else if (!ret)
+		return (FT_PING_NO_REPLY);
 
-	char from_ip[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &from_addr.sin_addr, from_ip, INET_ADDRSTRLEN);
+	get_timestamp(&end);
 
-	if (context->flags & FLAG_VERBOSE)
-		printf("%d bytes from %s: type = %d, code = %d\n", 
-			ret, from_ip, icmp_reply->icmp_type, icmp_reply->icmp_code);
+	char			from_ip[INET_ADDRSTRLEN];
+	struct iphdr	*ip_hdr = (struct iphdr*)recv_buf;
+	int				ip_header_len = ip_hdr->ihl * 4;
+	struct icmphdr	*icmp_packet = (struct icmphdr*)(recv_buf + ip_header_len);
+	int				icmp_size;
 
-	if (icmp_reply->icmp_type == ICMP_ECHOREPLY && icmp_reply->icmp_id == (getpid() & 0xFFFF))
-		process_echo_reply(recv_buf, &from_addr, start, &end, context);
+	if (!inet_ntop(AF_INET, &from_addr.sin_addr, from_ip, INET_ADDRSTRLEN))
+	{
+		perror("inet_ntop");
+		return (FT_PING_ERROR);
+	}
+	icmp_size = ntohs(ip_hdr->tot_len) - sizeof(struct iphdr);
+	if (icmp_packet->type == ICMP_ECHOREPLY && icmp_packet->un.echo.id == context->pid)
+	{
+		process_echo_reply(from_ip, icmp_size, icmp_packet, ip_hdr, start, &end, context);
+		return (FT_PING_OK);
+	}
 	else if (!(context->flags & FLAG_QUIET))
-		process_icmp_error(recv_buf, &from_addr);
-		
-	return (0);
-} 
+	{
+		process_other_icmp(from_ip, icmp_size, icmp_packet);
+		return (FT_PING_NO_REPLY);
+	}
+	return (FT_PING_OK);
+}
+
+/*
+ * Sends an ICMP packet and records timestamp
+*/
+int	send_packet(int socket_fd, struct sockaddr_in *dest_addr, char *packet, 
+								size_t packet_size, struct timeval *send_time)
+{
+	get_timestamp(send_time);
+	return (sendto(socket_fd, packet, packet_size, 0, 
+				(struct sockaddr*)dest_addr, sizeof(*dest_addr)));
+}

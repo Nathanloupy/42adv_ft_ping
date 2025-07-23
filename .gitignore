@@ -56,3 +56,4 @@ docker_original/
 .vscode/
 .cursor/
 .clangd
+compile_flags.txt

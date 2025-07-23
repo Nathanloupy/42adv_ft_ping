@@ -1,9 +1,9 @@
-FROM debian:10.12-slim
+FROM debian:12.11-slim
 
 WORKDIR /app
 
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y build-essential wget libreadline-dev texinfo
+    apt-get install -y build-essential wget
 
 # Download, compile and install inetutils 2.0
 RUN wget https://ftp.gnu.org/gnu/inetutils/inetutils-2.0.tar.gz && \
